@@ -24,10 +24,22 @@ router.get(
   authJwt.authenticateToken,
   productController.getUserCart
 );
-router.post(
+router.get(
   "/removeCart",
   authJwt.authenticateToken,
   productController.removeCart
+);
+
+router.post(
+  "/updateInventroy",
+  authJwt.authenticateToken,
+  productController.updateInventroy
+);
+
+router.get(
+  "/deleteProduct/:id",
+  authJwt.authenticateToken,
+  productController.deleteProduct
 );
 
 module.exports = router;

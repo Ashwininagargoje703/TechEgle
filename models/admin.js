@@ -24,8 +24,8 @@ const newSchema = new Schema(
 
 newSchema.statics.generateAuthToken = async (phoneNumber) => {
   let payload = phoneNumber + " " + crypto.randomBytes(20).toString("hex");
-  let token = await jwt.sign({ payload }, secretKey, { expiresIn: "15m" });
-  let expiredTime = moment().add(15, "minutes").toDate();
+  let token = await jwt.sign({ payload }, secretKey, { expiresIn: "30m" });
+  let expiredTime = moment().add(30, "minutes").toDate();
   return { token, expiredTime };
 };
 
