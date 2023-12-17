@@ -80,17 +80,40 @@ exports.addItemToCart = async (req, res) => {
     let productId = req.query.productId;
     let userId = req.userData._id;
     console.log(userId);
-    let p = await Product.findOne({ _id: ObjectId(productId) });
-    p.productId = p._id;
-    delete p._id;
-    delete p.createdAt;
-    delete p.updatedAt;
+    let p = await Product.findOne(
+      { _id: ObjectId(productId) },
+      {
+        title: 1,
+        price: 1,
+        quantity: 1,
+        imageUrl: 1,
+        productDescription: 1,
+        weight: 1,
+      }
+    ).lean();
+
+    if (p && p.quantity) delete p.quantity;
+    let isPresent = await Cart.findOne({
+      userId: ObjectId(userId),
+      "products._id": ObjectId(productId),
+    });
+
+    if (isPresent) {
+      await Cart.updateOne(
+        { userId: ObjectId(userId), "products._id": ObjectId(productId) },
+        { $inc: { "products.$.quantity": 1 } }
+      );
+      return res
+        .status(201)
+        .json({ message: "Product added to inventory successfully." });
+    }
+
+    p.quantity = 1;
     await Cart.updateOne(
       { userId: ObjectId(userId) },
-      { $push: { products: p } },
+      { $addToSet: { products: p } },
       { upsert: true }
     );
-
     return res
       .status(201)
       .json({ message: "Product added to inventory successfully." });
@@ -102,7 +125,6 @@ exports.addItemToCart = async (req, res) => {
     });
   }
 };
-
 exports.getUserCart = async (req, res) => {
   try {
     let userId = req.userData._id;
@@ -125,11 +147,29 @@ exports.removeCart = async (req, res) => {
   try {
     let userId = req.userData._id;
     let productId = req.query.productId;
-    console.log("id", productId);
-    let cart = await Cart.updateOne(
-      { userId: ObjectId(userId), "products._id": ObjectId(productId) },
-      { $pull: { products: { _id: ObjectId(productId) } } }
-    );
+    console.log({ productId, userId });
+    // let cart = await Cart.updateOne(
+    //     { userId: ObjectId(userId), "products._id": ObjectId(productId) },
+    //     { $pull: { products: { _id: ObjectId(productId) } } }
+    // );
+
+    let cart = await Cart.findOne({
+      userId: ObjectId(userId),
+      "products._id": ObjectId(productId),
+      "products.quantity": { $gt: 1 },
+    });
+
+    if (cart) {
+      await Cart.updateOne(
+        { userId: ObjectId(userId), "products._id": ObjectId(productId) },
+        { $inc: { "products.$.quantity": -1 } }
+      );
+    } else {
+      await Cart.updateOne(
+        { userId: ObjectId(userId), "products._id": ObjectId(productId) },
+        { $pull: { products: { _id: ObjectId(productId) } } }
+      );
+    }
 
     return res.status(201).json({
       message: "Remove successfully.",
